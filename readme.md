@@ -1,5 +1,3 @@
-Here’s a clean and professional `README.md` file you can use for your GitHub repository:
-
 ---
 
 # 🎵 Hand Gesture Controlled Sound Player
