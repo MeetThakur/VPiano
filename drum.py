@@ -89,7 +89,6 @@ while cap.isOpened():
                     cv2.circle(image, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
     
     cv2.imshow('Hand Tracking', image)
-    
     if cv2.waitKey(10) & 0xFF == ord('q'):
         break
 
