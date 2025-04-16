@@ -3,10 +3,8 @@ import mediapipe as mp
 import numpy as np
 from pygame import mixer
 
-# Initialize Pygame mixer
 mixer.init()
 
-# Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
@@ -16,15 +14,11 @@ hands = mp_hands.Hands(
 )
 mp_drawing = mp.solutions.drawing_utils
 
-# Initialize webcam
 cap = cv2.VideoCapture(0)
 
 def calculate_finger_angle(point1, point2, point3):
-    # Calculate vectors
     vector1 = np.array([point1.x - point2.x, point1.y - point2.y])
     vector2 = np.array([point3.x - point2.x, point3.y - point2.y])
-    
-    # Calculate angle using dot product
     cosine_angle = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
     angle = np.arccos(cosine_angle)
     return np.degrees(angle)
@@ -35,16 +29,10 @@ while cap.isOpened():
         print("Ignoring empty camera frame.")
         continue
 
-    # Flip the image horizontally for a mirror effect
     image = cv2.flip(image, 1)
-    
-    # Convert the BGR image to RGB
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
-    # Process the image and detect hands
     results = hands.process(image_rgb)
-    
-    # Draw hand landmarks
+
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
@@ -55,7 +43,6 @@ while cap.isOpened():
                 mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2)
             )
             
-            # Check finger bending for all fingers including thumb
             finger_landmarks = [
                 ("Thumb", [1, 2, 4], 30),
                 ("Index", [5, 6, 8], 60),
@@ -64,38 +51,45 @@ while cap.isOpened():
                 ("Pinky", [17, 18, 20], 150)
             ]
             
+
             h, w, c = image.shape
             for finger_name, landmarks, y_pos in finger_landmarks:
                 angle = calculate_finger_angle(
-                    hand_landmarks.landmark[landmarks[0]],  # MCP/CMC
-                    hand_landmarks.landmark[landmarks[1]],  # PIP/MCP
-                    hand_landmarks.landmark[landmarks[2]]   # TIP/IP
+                    hand_landmarks.landmark[landmarks[0]],
+                    hand_landmarks.landmark[landmarks[1]],
+                    hand_landmarks.landmark[landmarks[2]]
                 )
                 
-                # Draw status for each finger
-                if 160 < angle < 180:  # Slightly bent
+                if finger_name not in globals():
+                    globals()[finger_name] = False
+
+                if angle <= 160 and not globals()[finger_name]:
+                    mixer.music.load(f"sounds/{finger_landmarks.index((finger_name, landmarks, y_pos)) + 1}.mp3")
+                    mixer.music.play(0)
+                    globals()[finger_name] = True
+
+                if angle > 160:
+                    globals()[finger_name] = False
+                
+
+                if 160 < angle < 180:
                     cv2.putText(image, f"{finger_name}: Slightly Bent", (10, y_pos), 
                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                elif angle <= 160:  # Fully bent
+                elif angle <= 160:
                     cv2.putText(image, f"{finger_name}: Bent", (10, y_pos), 
                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                else:  # Straight
+                else:
                     cv2.putText(image, f"{finger_name}: Straight", (10, y_pos), 
                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             
-            # Get positions of hand landmarks
             for id, landmark in enumerate(hand_landmarks.landmark):
                 h, w, c = image.shape
                 cx, cy = int(landmark.x * w), int(landmark.y * h)
-                
-                # Draw a circle at the position of the wrist (landmark 0)
                 if id == 0:
                     cv2.circle(image, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
     
-    # Display the image
     cv2.imshow('Hand Tracking', image)
     
-    # Exit if 'q' is pressed
     if cv2.waitKey(10) & 0xFF == ord('q'):
         break
 
